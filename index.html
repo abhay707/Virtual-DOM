@@ -3,9 +3,22 @@
 <head>
     <meta charset="UTF-8" />
     <title>Mini React Demo</title>
+    <link rel="stylesheet" href="style.css"/>    
 </head>
 <body>
-    <div id="root"></div>
+    <div class="layout">
+        <div class="panel" id="root-panel">
+            <div class="panel-header">App</div>
+            <div class="app-shell">
+                <div id="root"></div>
+            </div>
+        </div>
+        <div class="panel">
+            <div class="panel-header">Component Tree · Hooks · Effects · Mutations</div>
+            <div id="debug-root"></div>
+        </div>
+    </div>
+    
     <script type="module" src="./main.js"></script>
 </body>
 </html>

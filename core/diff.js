@@ -11,41 +11,82 @@ function keyMap(children) {
     return map;
 }
 
-export default function diff(parent, oldNode, newNode, index = 0) {
+function summarizeVNode(node) {
+    if (node == null || node === false) {
+        return { kind: "empty" };
+    }
+
+    if (typeof node === "string" || typeof node === "number") {
+        return { kind: "text", value: String(node) };
+    }
+
+    return {
+        kind: "element",
+        type: node.type,
+        key: node?.props?.key ?? null
+    };
+}
+
+export default function diff(parent, oldNode, newNode, index = 0, changes = null, path = "0") {
     const existingDOM = parent.childNodes[index];
 
-    // Add new node
     if (!oldNode && newNode) {
         const newDOM = render(newNode);
         const refNode = parent.childNodes[index] || null;
         parent.insertBefore(newDOM, refNode);
+        if (changes) {
+            changes.push({
+                type: "add",
+                path,
+                node: summarizeVNode(newNode)
+            });
+        }
         return;
     }
 
-    // Remove node
     if (oldNode && !newNode) {
         parent.removeChild(existingDOM);
+        if (changes) {
+            changes.push({
+                type: "remove",
+                path,
+                node: summarizeVNode(oldNode)
+            });
+        }
         return;
     }
 
-    // Replace node (type changed)
     if (
         typeof oldNode !== typeof newNode ||
         (typeof oldNode === "object" && oldNode.type !== newNode.type)
     ) {
         parent.replaceChild(render(newNode), existingDOM);
-        return;
-    }
-
-    // Update text
-    if (typeof newNode === "string" || typeof newNode === "number") {
-        if (newNode !== oldNode) {
-            existingDOM.textContent = newNode;
+        if (changes) {
+            changes.push({
+                type: "replace",
+                path,
+                from: summarizeVNode(oldNode),
+                to: summarizeVNode(newNode)
+            });
         }
         return;
     }
 
-    // Diff children
+    if (typeof newNode === "string" || typeof newNode === "number") {
+        if (newNode !== oldNode) {
+            existingDOM.textContent = newNode;
+            if (changes) {
+                changes.push({
+                    type: "text",
+                    path,
+                    from: String(oldNode),
+                    to: String(newNode)
+                });
+            }
+        }
+        return;
+    }
+
     const oldChildren = Array.isArray(oldNode.props?.children)
         ? oldNode.props.children
         : [oldNode.props?.children].filter(Boolean);
@@ -63,26 +104,41 @@ export default function diff(parent, oldNode, newNode, index = 0) {
         if (key != null && oldKeyed[key]) {
             const { child: oldChild, index: oldIndex } = oldKeyed[key];
 
-            diff(existingDOM, oldChild, newChild, oldIndex);
+            diff(existingDOM, oldChild, newChild, oldIndex, changes, path + "." + newIndex);
 
             if (oldIndex < lastIndex) {
                 const domNode = existingDOM.childNodes[oldIndex];
                 existingDOM.appendChild(domNode);
+                if (changes) {
+                    changes.push({
+                        type: "move",
+                        path: path + "." + newIndex,
+                        fromIndex: oldIndex,
+                        toIndex: existingDOM.childNodes.length - 1
+                    });
+                }
             }
 
             lastIndex = Math.max(oldIndex, lastIndex);
             oldKeyed[key] = null;
         } else {
 
-            diff(existingDOM, oldChildren[newIndex], newChild, newIndex);
+            diff(existingDOM, oldChildren[newIndex], newChild, newIndex, changes, path + "." + newIndex);
         }
     });
 
     Object.keys(oldKeyed).forEach(key => {
         const entry = oldKeyed[key];
         if (entry) {
-            const { index } = entry;
-            existingDOM.removeChild(existingDOM.childNodes[index]);
+            const { index: childIndex, child } = entry;
+            existingDOM.removeChild(existingDOM.childNodes[childIndex]);
+            if (changes) {
+                changes.push({
+                    type: "remove",
+                    path: path + "." + childIndex,
+                    node: summarizeVNode(child)
+                });
+            }
         }
     });
 }
