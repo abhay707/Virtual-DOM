@@ -18,6 +18,9 @@ This project is not a production framework or a React clone. It is intentionally
 - `useEffect` hook with dependency arrays and cleanup support
 - Simple scheduler that batches state updates through a central render function
 
+<img width="1416" height="806" alt="Screenshot 2026-01-16 at 12 28 34 AM" src="https://github.com/user-attachments/assets/34a1e531-c4de-4d90-8199-ea861b3e2840" />
+
+
 ### React Internals-style visualizer
 
 - Split-screen UI: app on the left, internal state on the right
